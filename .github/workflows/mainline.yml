@@ -1,0 +1,28 @@
+name: Github PR Audit
+
+on:
+  pull_request:
+    branches:
+      - "main"
+    types:
+      - opened
+      - edited
+      - labeled
+      - unlabeled
+
+jobs:
+  Audit-Pull-Request:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/github-script@v6
+        with:
+          script: |
+            if (context.payload.pull_request.head === "release") return "Release branch can be mainlined.";
+            const requiredLabels = ['Special Label'];
+            let labels = context.payload.pull_request.labels;
+
+            if (labels.filter(l => requiredLabels.includes(l.name)).length === 0) {
+              throw new Error(`Required labels: ${requiredLabels.join(', ')}`);
+            }
+            return `PR labeled: ${requiredLabels.join(', ')} may be mainlined`;
