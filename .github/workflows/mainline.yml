@@ -18,11 +18,11 @@ jobs:
       - uses: actions/github-script@v6
         with:
           script: |
-            if (context.payload.pull_request.head === "release") return "Release branch can be mainlined.";
             const requiredLabels = ['Special Label'];
             let labels = context.payload.pull_request.labels;
+            const has_bypass_label = labels.filter(l => requiredLabels.includes(l.name)).length === 0;
+            const is_release_branch = context.payload.pull_request.head === "release";
 
-            if (labels.filter(l => requiredLabels.includes(l.name)).length === 0) {
-              throw new Error(`Required labels: ${requiredLabels.join(', ')}`);
+            if (!is_release_branch && !has_bypass_label) {
+              throw new Error(`Required labels: ${requiredLabels.join(', ')} (or release branch)`);
             }
-            return `PR labeled: ${requiredLabels.join(', ')} may be mainlined`;
