@@ -1,3 +1,3 @@
 # saga-mock2
 
-(release readme - slightly updated)
+(just some actions testings)
