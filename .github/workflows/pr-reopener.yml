@@ -6,8 +6,7 @@ on:
       - closed
 
 permissions:
-  pull-requests: write
-  issues: write  # Needed to copy labels and add comments
+  pull-requests: write  # Grant permission to create PRs
 
 jobs:
   reopen_pr_to_main:
@@ -25,61 +24,14 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Fetch original PR details
-        id: pr_details
+      - name: Reopen PR targeting main
         run: |
           PR_NUMBER=${{ github.event.pull_request.number }}
           PR_TITLE="${{ github.event.pull_request.title }}"
           PR_BODY="$(gh pr view $PR_NUMBER --json body -q '.body')"
           PR_HEAD="${{ github.event.pull_request.head.ref }}"
-          PR_BASE="${{ github.event.pull_request.base.ref }}"
-          PR_MERGE_COMMIT="${{ github.event.pull_request.merge_commit_sha }}"
 
-          # Get all labels
-          LABELS=$(gh pr view $PR_NUMBER --json labels -q '[.labels[].name] | join(",")')
-
-          echo "PR_NUMBER=$PR_NUMBER" >> $GITHUB_ENV
-          echo "PR_TITLE=$PR_TITLE" >> $GITHUB_ENV
-          echo "PR_BODY<<EOF" >> $GITHUB_ENV
-          echo "$PR_BODY" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
-          echo "PR_HEAD=$PR_HEAD" >> $GITHUB_ENV
-          echo "PR_BASE=$PR_BASE" >> $GITHUB_ENV
-          echo "PR_MERGE_COMMIT=$PR_MERGE_COMMIT" >> $GITHUB_ENV
-          echo "LABELS=$LABELS" >> $GITHUB_ENV
-
-      - name: Find existing PR targeting the old branch (if any)
-        id: existing_pr
-        run: |
-          TARGET_PR=$(gh pr list --state open --base "$PR_BASE" --json number -q '.[0].number' || echo "")
-          echo "TARGET_PR=$TARGET_PR" >> $GITHUB_ENV
-
-      - name: Reopen PR targeting main
-        id: new_pr
-        run: |
-          NEW_PR_URL=$(gh pr create --title "$PR_TITLE" --body "$PR_BODY" --head "$PR_HEAD" --base main --json url -q '.url')
-          echo "NEW_PR_URL=$NEW_PR_URL" >> $GITHUB_ENV
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Apply labels to new PR
-        if: env.LABELS != ''
-        run: gh pr edit "$NEW_PR_URL" --add-label "$LABELS"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Add comment to new PR
-        run: |
-          COMMENT="This PR was automatically reopened targeting **main**.\n\n"
-          COMMENT+="🔀 **Previous PR:** #${{ env.PR_NUMBER }}\n"
-          COMMENT+="📌 **Merged into:** \`${{ env.PR_BASE }}\`"
-
-          if [[ -n "${{ env.TARGET_PR }}" ]]; then
-            COMMENT+=" (related open PR: #${{ env.TARGET_PR }})"
-          fi
-
-          COMMENT+="\n🔗 **Merge Commit:** \`${{ env.PR_MERGE_COMMIT }}\`"
-
-          gh pr comment "$NEW_PR_URL" --body "$COMMENT"
+          # Create a new PR targeting main
+          gh pr create --title "$PR_TITLE" --body "$PR_BODY" --head "$PR_HEAD" --base main
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
