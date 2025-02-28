@@ -27,6 +27,8 @@ jobs:
 
       - name: Fetch original PR details
         id: pr_details
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           PR_NUMBER=${{ github.event.pull_request.number }}
           PR_TITLE="${{ github.event.pull_request.title }}"
@@ -50,6 +52,8 @@ jobs:
 
       - name: Find existing PR targeting the old branch (if any)
         id: existing_pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TARGET_PR=$(gh pr list --state open --base "$PR_BASE" --json number -q '.[0].number' || echo "")
           echo "TARGET_PR=$TARGET_PR" >> $GITHUB_ENV
