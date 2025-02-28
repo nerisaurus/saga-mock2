@@ -1,3 +1,3 @@
 # saga-mock2
 
-[just some gh actions testings]
+[some gh actions testings]
