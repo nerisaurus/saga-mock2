@@ -1,0 +1,37 @@
+name: Reopen PR to Main
+
+on:
+  pull_request:
+    types:
+      - closed
+
+permissions:
+  pull-requests: write  # Grant permission to create PRs
+
+jobs:
+  reopen_pr_to_main:
+    if: >-
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.base.ref != 'main' &&
+      contains(github.event.pull_request.labels.*.name, 'retarget-main')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up GitHub CLI
+        run: gh auth status
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Reopen PR targeting main
+        run: |
+          PR_NUMBER=${{ github.event.pull_request.number }}
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          PR_BODY="$(gh pr view $PR_NUMBER --json body -q '.body')"
+          PR_HEAD="${{ github.event.pull_request.head.ref }}"
+
+          # Create a new PR targeting main
+          gh pr create --title "$PR_TITLE" --body "$PR_BODY" --head "$PR_HEAD" --base main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
