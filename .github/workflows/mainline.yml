@@ -6,9 +6,11 @@ on:
       - "main"
     types:
       - opened
+      - reopened
       - edited
       - labeled
       - unlabeled
+      - synchronize
 
 jobs:
   Audit-Pull-Request:
