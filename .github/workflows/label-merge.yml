@@ -44,7 +44,7 @@ jobs:
         id: find_target_pr
         run: |
           BASE_BRANCH=${{ github.event.pull_request.base.ref }}
-          TARGET_PR=$(gh pr list --base "$BASE_BRANCH" --state open --json number -q '.[0].number')
+          TARGET_PR=$(gh pr list --head "$BASE_BRANCH" --state open --json number -q '.[0].number')
 
           if [[ -n "$TARGET_PR" ]]; then
             echo "TARGET_PR=$TARGET_PR" >> $GITHUB_ENV
