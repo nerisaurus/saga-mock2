@@ -30,8 +30,23 @@ jobs:
           PR_TITLE="${{ github.event.pull_request.title }}"
           PR_BODY="$(gh pr view $PR_NUMBER --json body -q '.body')"
           PR_HEAD="${{ github.event.pull_request.head.ref }}"
+          PR_BASE="${{ github.event.pull_request.base.ref }}"
+          PR_MERGE_COMMIT="${{ github.event.pull_request.merge_commit_sha }}"
+          PR_LABELS=$(gh pr view $PR_NUMBER --json labels -q '[.labels[].name] | join(",")')
 
-          # Create a new PR targeting main
-          gh pr create --title "$PR_TITLE" --body "$PR_BODY" --head "$PR_HEAD" --base main
+          # Create a new PR targeting main and get the PR number from it
+          NEW_PR_NUMBER=$(gh pr create --title "$PR_TITLE" --body "$PR_BODY" --head "$PR_HEAD" --base main --label "$PR_LABELS" | sed 's@^.*\/@@g')
+
+          # Add information to the new PR so the history can be traced
+          if [[ -n "$NEW_PR_NUMBER" ]]; then
+            COMMENT="This PR was automatically reopened targeting **main**.\n\n"
+            COMMENT+="🔀 **Previous PR:** #${{ env.PR_NUMBER }}"
+            COMMENT+="\n📌 **Merged into:** \`${{ env.PR_BASE }}\`"
+            COMMENT+="\n🔗 **Merge Commit:** \`${{ env.PR_MERGE_COMMIT }}\`"
+            gh pr comment $NEW_PR_NUMBER --body "$COMMENT"
+          else
+            exit 1
+          fi
+
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
