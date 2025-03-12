@@ -40,9 +40,9 @@ jobs:
           # Add information to the new PR so the history can be traced
           if [[ -n "$NEW_PR_NUMBER" ]]; then
             COMMENT="This PR was automatically reopened targeting **main**.\n\n"
-            COMMENT+="🔀 **Previous PR:** #${{ env.PR_NUMBER }}"
-            COMMENT+="\n📌 **Merged into:** \`${{ env.PR_BASE }}\`"
-            COMMENT+="\n🔗 **Merge Commit:** \`${{ env.PR_MERGE_COMMIT }}\`"
+            COMMENT+="🔀 **Previous PR:** #${PR_NUMBER}"
+            COMMENT+="\n📌 **Merged into:** \`${PR_BASE}\`"
+            COMMENT+="\n🔗 **Merge Commit:** \`${PR_MERGE_COMMIT}\`"
             gh pr comment $NEW_PR_NUMBER --body "$COMMENT"
           else
             exit 1
