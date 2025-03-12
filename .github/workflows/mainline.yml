@@ -26,5 +26,5 @@ jobs:
             const is_release_branch = context.payload.pull_request.head === "release";
 
             if (!is_release_branch && !has_bypass_label) {
-              throw new Error(`Required labels: ${requiredLabels.join(', ')} (or release branch)`);
+              core.setFailed(`Required labels: ${requiredLabels.join(', ')} (or release branch)`);
             }
