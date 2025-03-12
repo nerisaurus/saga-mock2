@@ -1,0 +1,49 @@
+name: Auto-RC-Generator
+
+on:
+  issues:
+    types:
+      - labeled
+
+jobs:
+  create-pull-request:
+    if: github.event.label.name == '🔧 Automated Issue (RC)'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5 # should run in < 1 minute, even with delays overrunning this timeout is something to look into
+    permissions:
+      contents: write
+      pull-requests: write
+      repository-projects: write
+      issues: write
+    steps:
+      # Checkout main branch
+      - name: checkout branch
+        uses: actions/checkout@v4
+      # Name the branch
+      - name: Make branch name
+        run: echo "BRANCH_NAME=rc_$(date +'%Y%m%d_%H%M%S')" >> $GITHUB_ENV
+      # Create a release candidate branch
+      - name: create rc
+        run: git checkout -b "$BRANCH_NAME"
+        env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Push a trivial commit
+      - name: make an empty commit (so it can be made into an rc)
+        run: |
+          git config --global user.email "githubaction@saga.com"
+          git config --global user.name "Github Action"
+          git commit -m "Creating release candidate" --allow-empty
+          git push --set-upstream origin "$BRANCH_NAME"
+        env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # There's also --template for longer bodies, --reviewer to auto-set who should review
+      - name: create pull request
+        run: gh pr create --title "[release] Release Candidate $(date +'%Y-%m-%d')" --body "${{ github.event.issue.body }}" --label "🚀 Release Candidate" --draft
+        env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Can't delete issues without admin priveleges, but can close them out
+      - name: close issue
+        run: gh issue close ${{ github.event.issue.number }}
+        env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    

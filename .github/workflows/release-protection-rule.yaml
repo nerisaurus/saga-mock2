@@ -1,0 +1,27 @@
+name: Confirm Safe to Merge to Release
+
+on:
+  pull_request:
+    branches:
+      - "release"
+    types:
+      - opened
+      - reopened
+      - edited
+      - labeled
+      - unlabeled
+      - synchronize
+
+jobs:
+  Audit-Pull-Request-Release:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: "release merge protection rule ${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}"
+      cancel-in-progress: true
+    timeout-minutes: 5
+    steps:
+      - name: Branch Check
+        if: ${{ !(github.event.pull_request.head.ref == 'main' || contains(github.event.pull_request.labels.*.name, '🚀 Release Candidate') || contains(github.event.pull_request.labels.*.name, 'Hotfix 🌶️'))  }}
+        run: |
+          echo "Requires one of the labels '🚀 Release Candidate' or 'Hotfix 🌶️' or to be on the 'main' branch"
+          exit 1
