@@ -35,7 +35,7 @@ jobs:
           PR_LABELS=$(gh pr view $PR_NUMBER --json label -q '[.labels[].name] | join(",")')
 
           # Create a new PR targeting main and get the PR number from it
-          NEW_PR_NUMBER=$(gh pr create --title "$PR_TITLE" --body "$PR_BODY" --head "$PR_HEAD" --base main --labels "$PR_LABELS" | sed 's@^.*\/@@g')
+          NEW_PR_NUMBER=$(gh pr create --title "$PR_TITLE" --body "$PR_BODY" --head "$PR_HEAD" --base main --label "$PR_LABELS" | sed 's@^.*\/@@g')
 
           # Add information to the new PR so the history can be traced
           if [[ -n "$NEW_PR_NUMBER" ]]; then
