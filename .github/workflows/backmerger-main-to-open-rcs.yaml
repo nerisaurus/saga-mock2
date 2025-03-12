@@ -1,0 +1,34 @@
+name: Merge Main into Open RCs
+
+on:
+  push:
+    branches:
+      - 'main'
+
+permissions:
+  pull-requests: write
+  issues: write
+  contents: write
+
+jobs:
+  main:
+    concurrency:
+      group: "main to rcs ${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}"
+      cancel-in-progress: true
+    name: Create PRs from Main to open and non-draft RCs, set to auto-merge if it's viable
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+      - name: pull-request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          while IFS=$'\t' read -r branch number; do
+            TEMP_BRANCH_NAME="main-to-$number-${{ github.event.push.after }}"
+            git checkout -b $TEMP_BRANCH_NAME
+            git push origin $TEMP_BRANCH_NAME
+            gh pr create --title "[Automated] Backmerge main into ${branch} (for PR \#${number})" --body "Automated Backmerge PR.  This should be enabled to auto-merge if there are no conflicts - if it seems to be lingering, check if manual resolution is needed." --label "🔧 Automated Backmerge" --head "$TEMP_BRANCH_NAME" --base "$branch"
+            gh pr merge release --auto --merge
+          done << (gh pr list -l "🚀 Release Candidate" --json headRefName,number | jq -r '.[] | "\(.headRefName)\t\(.number)"')
