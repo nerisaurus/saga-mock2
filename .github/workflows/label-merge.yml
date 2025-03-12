@@ -1,0 +1,89 @@
+name: Merge Labels on PR Merge
+
+on:
+  pull_request:
+    types:
+      - closed
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  update_labels:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: checkout branch
+        uses: actions/checkout@v4
+      - name: Get PR labels
+        id: get_labels
+        run: |
+          PR_NUMBER=${{ github.event.pull_request.number }}
+          PR_BASE_BRANCH=${{ github.event.pull_request.base.ref }}
+          LABELS_JSON=$(gh pr view $PR_NUMBER --json labels -q '.labels[].name')
+          
+          # Define the tracked labels
+          TRACKED_LABELS=("foo1" "foo2" "foo3" "foo4" "foo5" "foo6" "foo7")
+
+          # Extract only the tracked labels
+          MERGED_LABELS=()
+          for label in $LABELS_JSON; do
+            if [[ " ${TRACKED_LABELS[*]} " =~ " ${label} " ]]; then
+              MERGED_LABELS+=("$label")
+            fi
+          done
+
+          echo "MERGED_LABELS=${MERGED_LABELS[*]}" >> $GITHUB_ENV
+
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Find target PR
+        id: find_target_pr
+        run: |
+          BASE_BRANCH=${{ github.event.pull_request.base.ref }}
+          TARGET_PR=$(gh pr list --head "$BASE_BRANCH" --state open --json number -q '.[0].number')
+
+          if [[ -n "$TARGET_PR" ]]; then
+            echo "TARGET_PR=$TARGET_PR" >> $GITHUB_ENV
+          fi
+
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get target PR labels
+        if: env.TARGET_PR != ''
+        id: get_target_labels
+        run: |
+          TARGET_PR=${{ env.TARGET_PR }}
+          TARGET_LABELS_JSON=$(gh pr view $TARGET_PR --json labels -q '.labels[].name')
+
+          # Define the tracked labels
+          TRACKED_LABELS=("foo1" "foo2" "foo3" "foo4" "foo5" "foo6" "foo7")
+
+          # Extract only the tracked labels from the target PR
+          TARGET_LABELS=()
+          for label in $TARGET_LABELS_JSON; do
+            if [[ " ${TRACKED_LABELS[*]} " =~ " ${label} " ]]; then
+              TARGET_LABELS+=("$label")
+            fi
+          done
+
+          # Merge the labels
+          UNION_LABELS=($(echo "${MERGED_LABELS[@]} ${TARGET_LABELS[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
+
+          echo "FINAL_LABELS=${UNION_LABELS[*]}" >> $GITHUB_ENV
+
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update target PR labels
+        if: env.TARGET_PR != ''
+        run: |
+          TARGET_PR=${{ env.TARGET_PR }}
+          gh pr edit $TARGET_PR --add-label "${FINAL_LABELS// /,}"
+
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
