@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - "main"
+      - "release"
     types:
       - opened
       - reopened
@@ -15,16 +16,9 @@ on:
 jobs:
   Audit-Pull-Request:
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/github-script@v6
-        with:
-          script: |
-            const requiredLabels = ['Special Label'];
-            let labels = context.payload.pull_request.labels;
-            const has_bypass_label = labels.filter(l => requiredLabels.includes(l.name)).length === 0;
-            const is_release_branch = context.payload.pull_request.head === "release";
-
-            if (!is_release_branch && !has_bypass_label) {
-              core.setFailed(`Required labels: ${requiredLabels.join(', ')} (or release branch)`);
-            }
+      - name: Branch Check
+        if: ${{ !(github.event.pull_request.head.ref == "release" || contains(github.event.pull_request.labels.*.name, 'Special Label 1') || contains(github.event.pull_request.labels.*.name, 'Special Label 2'))  }}
+        run: |
+          echo "::error Branch must be \`release\` or must contain labels `Special Label 1` or `Special Label 2`"
+          exit 1
