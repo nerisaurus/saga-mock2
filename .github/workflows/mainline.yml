@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Branch Check
-        if: ${{ !(github.event.pull_request.head.ref == "release" || contains(github.event.pull_request.labels.*.name, 'Special Label 1') || contains(github.event.pull_request.labels.*.name, 'Special Label 2'))  }}
+        if: ${{ !(github.event.pull_request.head.ref == 'release' || contains(github.event.pull_request.labels.*.name, 'Special Label 1') || contains(github.event.pull_request.labels.*.name, 'Special Label 2'))  }}
         run: |
           echo "::error Branch must be \`release\` or must contain labels `Special Label 1` or `Special Label 2`"
           exit 1
