@@ -31,4 +31,4 @@ jobs:
             git push origin $TEMP_BRANCH_NAME
             gh pr create --title "[Automated] Backmerge main into ${branch} (for PR \#${number})" --body "Automated Backmerge PR.  This should be enabled to auto-merge if there are no conflicts - if it seems to be lingering, check if manual resolution is needed." --label "🔧 Automated Backmerge" --head "$TEMP_BRANCH_NAME" --base "$branch"
             gh pr merge release --auto --merge
-          done << (gh pr list -l "🚀 Release Candidate" --json headRefName,number | jq -r '.[] | "\(.headRefName)\t\(.number)"')
+          done < <(gh pr list -l "🚀 Release Candidate" --json headRefName,number | jq -r '.[] | "\(.headRefName)\t\(.number)"')
