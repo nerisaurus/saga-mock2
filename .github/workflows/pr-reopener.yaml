@@ -13,8 +13,13 @@ jobs:
     if: >-
       github.event.pull_request.merged == true &&
       github.event.pull_request.base.ref != 'main' &&
-      contains(github.event.pull_request.labels.*.name, 'retarget-main')
+      contains(github.event.pull_request.labels.*.name, 'Dev Branch 🫒')
     runs-on: ubuntu-latest
+    concurrency:
+      group: "PR re-creator ${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}"
+      cancel-in-progress: true
+    timeout-minutes: 5
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

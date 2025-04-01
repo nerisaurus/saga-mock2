@@ -1,0 +1,40 @@
+name: Bug Report
+description: A template for reporting bugs.
+projects: ["hipponot/Saga Engineering"]
+type: 'Bug'
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please fill out all the info you know in full.
+  - type: textarea
+    id: issue-description
+    attributes:
+      label: '📝 Describe the bug'
+      description: Describe the issue here.
+    validations:
+      required: true
+  - type: checkboxes
+    id: environments
+    attributes:
+      label: '🗺️ Where does this occur?'
+      description: What environments
+      options:
+        - label: Live Site
+        - label: Code in test in QA/Dev (details in repro step)
+    validations:
+      required: true
+  - type: textarea
+    id: issue-description
+    attributes:
+      label: '🧪 Reproduction Steps'
+      description: What steps (add as much detail as needed) can reproduce the issue?  If known does it happen for only a particular user/org/role/browser?
+    validations:
+      required: true
+  - type: textarea
+    id: priority-workaround
+    attributes:
+      label: '🧹 Severity/Workaround'
+      description: What is the severity to the user and is there a workaround (if so, please give steps to work around or person to contact to help here)?
+    validations:
+      required: true

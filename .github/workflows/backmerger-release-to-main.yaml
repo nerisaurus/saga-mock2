@@ -12,6 +12,9 @@ permissions:
 
 jobs:
   main:
+    concurrency:
+      group: "release to qa backmerge ${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}"
+      cancel-in-progress: true
     name: Create PR Release to Main, set to auto-merge if it's viable
     runs-on: ubuntu-latest
     timeout-minutes: 5

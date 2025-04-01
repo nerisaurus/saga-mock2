@@ -1,0 +1,27 @@
+name: Confirm Safe to Mainline
+
+on:
+  pull_request:
+    branches:
+      - "main"
+    types:
+      - opened
+      - reopened
+      - edited
+      - labeled
+      - unlabeled
+      - synchronize
+
+jobs:
+  Audit-Pull-Request-Mainline:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: "mainline protection rule ${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}"
+      cancel-in-progress: true
+    timeout-minutes: 5
+    steps:
+      - name: Branch Check
+        if: ${{ !(github.event.pull_request.head.ref == 'release' || contains(github.event.pull_request.labels.*.name, 'Can Bypass QA ⚡'))  }}
+        run: |
+          echo "Requires the label 'Can Bypass QA ⚡' or to be on the 'release' branch"
+          exit 1
