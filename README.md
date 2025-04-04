@@ -1,3 +1,3 @@
 # saga-mock2
 
-(some testing of actions, like backmerges)
+(locally some testing of actions, like backmerges)
