@@ -1,12 +1,13 @@
-name: Confirm Safe to Mainline
+name: Confirm Safe to RC
 
 on:
-  push: # for automations getting release --> main
-    branches:
-      - "release"
-  pull_request: # for PRs directly to main
+  push: # for automations getting main --> backmerged into rcs
     branches:
       - "main"
+  pull_request: # for PRs of dev branches
+    branches-ignore:
+      - "main"
+      - "release"
     types:
       - opened
       - reopened
@@ -21,21 +22,21 @@ on:
       - dismissed
 
 env:
-  BRANCH_IS_RELEASE: ${{ github.event_name == 'push' && github.event.ref == 'refs/heads/release' ||
-    github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'release' }}
+  BRANCH_IS_MAIN: ${{ github.event_name == 'push' && github.event.ref == 'refs/heads/main' ||
+    github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'main' }}
 
 jobs:
   Audit-Pull-Request-Mainline:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Release Path
-        if: ${{ env.BRANCH_IS_RELEASE }}
+      - name: Backmerge
+        if: ${{ env.BRANCH_IS_MAIN }}
         run: |
-          echo "Release branch is always allowed to merge to main"
+          echo "main branch doesn't require approvals to backmerge"
           exit 0
-      - name: Bypassing Release
-        if: ${{ !env.BRANCH_IS_RELEASE }}
+      - name: Non-Backmerges
+        if: ${{ !env.BRANCH_IS_MAIN }}
         run: |
           EVENT_NAME=${{ github.event_name }}
           if [[ "$EVENT_NAME" == "pull_request" ]]; then
@@ -46,14 +47,9 @@ jobs:
             echo "Unsupported event type: $EVENT_NAME"
             exit 1
           fi
-          BYPASS_LABEL=$(gh pr view $PR_NUMBER --json labels -q '.labels[].name' | grep -E '^Can Bypass QA ⚡$')
           REVIEW_DECISION_JSON=$(gh pr view $PR_NUMBER --json reviewDecision)
           if [[ "$REVIEW_DECISION_JSON" != *"APPROVED"* ]]; then
             echo "PR must have an approved review to merge"
-            exit 1
-          fi
-          if [[ -z "$BYPASS_LABEL" ]]; then
-            echo "Requires the label 'Can Bypass QA ⚡' to merge directly to main.""
             exit 1
           fi
           exit 0
