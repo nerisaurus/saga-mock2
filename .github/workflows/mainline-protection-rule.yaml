@@ -35,7 +35,7 @@ jobs:
           echo "Release branch is always allowed to merge to main"
           exit 0
       - name: Bypassing Release
-        if: ${{ !env.BRANCH_IS_RELEASE }}
+        if: ${{ env.BRANCH_IS_RELEASE != true }}
         run: |
           EVENT_NAME=${{ github.event_name }}
           if [[ "$EVENT_NAME" == "pull_request" ]]; then

@@ -31,12 +31,12 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Backmerge
-        if: ${{ env.BRANCH_IS_MAIN }}
+        if: ${{ env.BRANCH_IS_MAIN == true }}
         run: |
           echo "main branch doesn't require approvals to backmerge"
           exit 0
       - name: Non-Backmerges
-        if: ${{ !env.BRANCH_IS_MAIN }}
+        if: ${{ env.BRANCH_IS_MAIN != true}}
         run: |
           EVENT_NAME=${{ github.event_name }}
           if [[ "$EVENT_NAME" == "pull_request" ]]; then
