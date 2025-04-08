@@ -37,6 +37,8 @@ jobs:
           exit 0
       - name: Non-Backmerges
         if: ${{ env.BRANCH_IS_MAIN != true}}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           EVENT_NAME=${{ github.event_name }}
           if [[ "$EVENT_NAME" == "pull_request" ]]; then

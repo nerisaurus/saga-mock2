@@ -36,6 +36,8 @@ jobs:
           exit 0
       - name: Bypassing Release
         if: ${{ env.BRANCH_IS_RELEASE != true }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           EVENT_NAME=${{ github.event_name }}
           if [[ "$EVENT_NAME" == "pull_request" ]]; then
