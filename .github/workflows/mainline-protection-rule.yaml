@@ -44,17 +44,23 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          echo "it's debug time - started run"
           EVENT_NAME=${{ github.event_name }}
+          echo "event name: $EVENT_NAME"
           if [[ "$EVENT_NAME" == "pull_request" ]]; then
             PR_NUMBER=${{ github.event.pull_request.number }}
+            echo "PR number: $PR_NUMBER"
           elif [[ "$EVENT_NAME" == "pull_request_review" ]]; then
             PR_NUMBER=${{ github.event.review.pull_request.number }}
           else
             echo "Unsupported event type: $EVENT_NAME"
             exit 1
           fi
+          echo "Past PR calculation: PR number: $PR_NUMBER"
           BYPASS_LABEL=$(gh pr view $PR_NUMBER --json labels -q '.labels[].name' | grep -E '^Can Bypass QA ⚡$')
+          echo "Bypass label: $BYPASS_LABEL"
           REVIEW_DECISION_JSON=$(gh pr view $PR_NUMBER --json reviewDecision -q '.reviewDecision')
+          echo "Review decision JSON: $REVIEW_DECISION_JSON"
           if [[ "$REVIEW_DECISION_JSON" != *"APPROVED"* ]]; then
             echo "PR must have an approved review to merge"
             exit 0 # DEBUG
@@ -63,4 +69,5 @@ jobs:
             echo "Requires the label 'Can Bypass QA ⚡' to merge directly to main.""
             exit 1
           fi
+          echo "Bypass label found, proceeding with merge."
           exit 0
