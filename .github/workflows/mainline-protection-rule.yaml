@@ -63,9 +63,9 @@ jobs:
           echo "Can run gh pr view with json arg: $CAN_RUN_GH_PR_WITH_JSON_ARG"
           CAN_RUN_GH_PR_WITH_Q_ARG=$(gh pr view $PR_NUMBER --json labels -q '.labels[].name')
           echo "Can run gh pr view with q arg: $CAN_RUN_GH_PR_WITH_Q_ARG"
-          gh pr view $PR_NUMBER --json labels -q '.labels[].name' | grep -E '^Can Bypass QA ⚡$'
+          gh pr view $PR_NUMBER --json labels -q '.labels[].name' | grep '^Can Bypass QA ⚡$' || true
           echo "gh pr view with grep: $?"
-          BYPASS_LABEL=$(gh pr view $PR_NUMBER --json labels -q '.labels[].name' | grep -E '^Can Bypass QA ⚡$')
+          BYPASS_LABEL=$(gh pr view $PR_NUMBER --json labels -q '.labels[].name' | grep '^Can Bypass QA ⚡$' || '')
           echo "Bypass label: $BYPASS_LABEL"
           REVIEW_DECISION_JSON=$(gh pr view $PR_NUMBER --json reviewDecision -q '.reviewDecision')
           echo "Review decision JSON: $REVIEW_DECISION_JSON"
