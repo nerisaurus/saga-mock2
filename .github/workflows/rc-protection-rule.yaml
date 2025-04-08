@@ -35,6 +35,11 @@ jobs:
         run: |
           echo "main branch doesn't require approvals to backmerge"
           exit 0
+      - name: (for non-backmerges) Checkout Branch
+        if: ${{ env.BRANCH_IS_MAIN != true }}
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: .
       - name: Non-Backmerges
         if: ${{ env.BRANCH_IS_MAIN != true}}
         env:
