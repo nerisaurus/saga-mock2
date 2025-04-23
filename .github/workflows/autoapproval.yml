@@ -1,0 +1,23 @@
+name: PR Approval
+
+on:
+  pull_request:
+    branches:
+    - main
+    types: [opened] # probably the only one you need
+
+jobs:
+  build:
+    name: Auto-approves
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/github-script@v4
+      with:
+        script: |
+          const result = await github.pulls.createReview({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            pull_number: context.issue.number,
+            event: "APPROVE"
+          })
+          console.log(result.status)
