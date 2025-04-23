@@ -4,7 +4,7 @@ on:
   pull_request:
     branches:
     - main
-    types: [opened, synchronized] # probably the only one you need
+    types: [opened, synchronize] # probably the only one you need
 
 jobs:
   build:
