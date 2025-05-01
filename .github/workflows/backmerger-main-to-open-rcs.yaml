@@ -78,7 +78,7 @@ jobs:
         if: env.TARGET_PR != ''
         uses: actions/github-script@v4
         with:
-          github-token: ${{ secrets.PR_APPROVAL_TOKEN }}
+          github-token: ${{ secrets.GH_PAT }}
           script: |
             const result = await github.pulls.createReview({
               owner: context.repo.owner,
