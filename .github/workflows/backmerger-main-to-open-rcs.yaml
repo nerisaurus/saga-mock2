@@ -55,9 +55,10 @@ jobs:
 
             if [[ -n "$TARGET_PR" ]]; then
               if [ -z "$TARGET_PR_LIST" ]; then
-                TARGET_PR_LIST="$pr"
+                TARGET_PR_LIST="$TARGET_PR"
+                echo "putting $TARGET_PR in TARGET_PR_LIST"
               else
-                TARGET_PR_LIST="$TARGET_PR_LIST,$pr"
+                TARGET_PR_LIST="$TARGET_PR_LIST,$TARGET_PR"
               fi
 
               # Notify the RC PR about the backmerge attempt
@@ -65,6 +66,9 @@ jobs:
             fi
           done < <(gh pr list -l "🚀 Release Candidate" --json headRefName,number | jq -r '.[] | "\(.headRefName)\t\(.number)"')
           echo "TARGET_PR_LIST=$TARGET_PR_LIST" >> $GITHUB_ENV
+      - name: debug
+        run: |
+          echo "TARGET_PR_LIST=$TARGET_PR_LIST"
       - name: approve-pr
         if: env.TARGET_PR_LIST != ''
         uses: actions/github-script@v4
