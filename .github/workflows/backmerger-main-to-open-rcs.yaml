@@ -32,7 +32,7 @@ jobs:
             local backmerge_pr=$2
             local status=$3
             local message=$4
-            gh pr comment $rc_pr --body-file - <<< "🔧 **Backmerge Status Update**: $status | $message | Backmerge PR: #$backmerge_pr"
+            gh pr comment $rc_pr --body-file - <<< "**Backmerge #$backmerge_pr Status**: $status| $message"
           }
 
           while IFS=$'\t' read -r branch number; do
@@ -57,7 +57,7 @@ jobs:
               echo "RC_PR=$number" >> $GITHUB_ENV
 
               # Notify the RC PR about the backmerge attempt
-              notify_rc_pr $number $TARGET_PR "Started" "A backmerge from main has been initiated. This PR will auto-merge if all checks pass. You can track progress in PR #$TARGET_PR."
+              notify_rc_pr $number $TARGET_PR "Started" "A backmerge from main has been initiated. This PR will auto-merge if all checks pass."
             fi
           done < <(gh pr list -l "🚀 Release Candidate" --json headRefName,number | jq -r '.[] | "\(.headRefName)\t\(.number)"')
       - name: approve-pr
