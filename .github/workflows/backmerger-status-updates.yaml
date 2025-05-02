@@ -74,7 +74,7 @@ jobs:
               message = 'The backmerge is in progress, waiting for checks to complete.';
             }
 
-            let body = `**Backmerge #${pr_number} Status**: ${status} | ${message}`;
+            let body = `🔧 **Backmerge Status (PR #${pr_number})**: ${status} | ${message}`;
 
             // Add a comment to the RC PR
             await github.issues.createComment({
