@@ -32,7 +32,7 @@ jobs:
             local backmerge_pr=$2
             local status=$3
             local message=$4
-            gh pr comment $rc_pr --body-file - <<< "🔧 **Backmerge Status Update**: $status\n$message\n\nBackmerge PR: #$backmerge_pr"
+            gh pr comment $rc_pr --body-file - <<< '🔧 **Backmerge Status Update**: $status\n$message\n\nBackmerge PR: #$backmerge_pr'
           }
 
           while IFS=$'\t' read -r branch number; do
@@ -45,7 +45,7 @@ jobs:
               --label "🔧 Automated Backmerge" \
               --head "$TEMP_BRANCH_NAME" \
               --base "$branch" \
-              --body-file - <<< "Automated Backmerge PR. This should be enabled to auto-merge if all checks pass - if it seems to be lingering, check if manual resolution is needed.\n\nThis PR will be automatically approved and merged if all checks pass. If it fails to merge, please check for:\n- Merge conflicts\n- Failing tests\n- Other issues\n\nRC PR: #$number"
+              --body-file - <<< 'Automated Backmerge PR. This should be enabled to auto-merge if all checks pass - if it seems to be lingering, check if manual resolution is needed.\n\nThis PR will be automatically approved and merged if all checks pass. If it fails to merge, please check for:\n- Merge conflicts\n- Failing tests\n- Other issues\n\nRC PR: #$number'
 
             # Get the backmerge PR number
             TARGET_PR=$(gh pr list --head $TEMP_BRANCH_NAME --state open --json number -q '.[0].number')
