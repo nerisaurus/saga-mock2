@@ -15,9 +15,9 @@ permissions:
 jobs:
   status-update:
     if: |
-      github.event.pull_request.labels.*.name == '🔧 Automated Backmerge' ||
-      (github.event.check_suite && contains(github.event.check_suite.pull_requests.*.labels.*.name, '🔧 Automated Backmerge')) ||
-      (github.event.check_run && contains(github.event.check_run.pull_requests.*.labels.*.name, '🔧 Automated Backmerge'))
+      (github.event_name == "pull_request" && contains(github.event.pull_request.*.labels.*.name, '🔧 Automated Backmerge')) ||
+      (github.event_name == "check_suite" && contains(github.event.check_suite.pull_requests.*.labels.*.name, '🔧 Automated Backmerge')) ||
+      (github.event_name == "check_run" && contains(github.event.check_suite.pull_requests.*.labels.*.name, '🔧 Automated Backmerge'))
     runs-on: ubuntu-latest
     steps:
       - name: Get PR Info
@@ -50,21 +50,21 @@ jobs:
           script: |
             const prInfo = JSON.parse('${{ steps.pr_info.outputs }}');
             const { pr_number, rc_pr_number, state, merged, mergeable, mergeable_state } = prInfo;
-            
+
             let status = '';
             let message = '';
-            
+
             if (merged) {
-              status = 'Completed';
+              status = '✅ Completed';
               message = 'The backmerge has been successfully completed.';
             } else if (state === 'closed') {
-              status = 'Failed';
-              message = 'The backmerge PR was closed without merging. This could be due to conflicts or failing checks.';
+              status = '❌ Closed';
+              message = 'The backmerge PR was closed without merging.';
             } else if (mergeable_state === 'dirty') {
-              status = 'Blocked';
+              status = '👁️ Blocked';
               message = 'The backmerge has merge conflicts that need to be resolved.';
             } else if (mergeable_state === 'blocked') {
-              status = 'Blocked';
+              status = '👁️ Blocked';
               message = 'The backmerge is blocked by failing checks.';
             } else if (mergeable_state === 'behind') {
               status = 'Pending';
@@ -73,11 +73,13 @@ jobs:
               status = 'In Progress';
               message = 'The backmerge is in progress, waiting for checks to complete.';
             }
-            
+
+            let body = `🔧 **Backmerge Status (PR #${pr_number})**: ${status} | ${message}`;
+
             // Add a comment to the RC PR
             await github.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: rc_pr_number,
-              body: `🔧 **Backmerge Status Update**: ${status}\n${message}\n\nBackmerge PR: #${pr_number}`
+              body: body,
             });
