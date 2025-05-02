@@ -15,9 +15,9 @@ permissions:
 jobs:
   status-update:
     if: |
-      github.event.pull_request.labels.*.name == '🔧 Automated Backmerge' ||
-      (github.event.check_suite && contains(github.event.check_suite.pull_requests.*.labels.*.name, '🔧 Automated Backmerge')) ||
-      (github.event.check_run && contains(github.event.check_run.pull_requests.*.labels.*.name, '🔧 Automated Backmerge'))
+      (github.event_name == "pull_request" && contains(github.event.pull_request.*.labels.*.name, '🔧 Automated Backmerge')) ||
+      (github.event_name == "check_suite" && contains(github.event.check_suite.pull_requests.*.labels.*.name, '🔧 Automated Backmerge')) ||
+      (github.event_name == "check_run" && contains(github.event.check_suite.pull_requests.*.labels.*.name, '🔧 Automated Backmerge'))
     runs-on: ubuntu-latest
     steps:
       - name: Get PR Info

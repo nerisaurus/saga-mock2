@@ -35,6 +35,7 @@ jobs:
             gh pr comment $rc_pr --body-file - <<< "🔧 **Backmerge Status (PR #$backmerge_pr)**: $status | $message"
           }
 
+          TARGET_PR_LIST=""
           while IFS=$'\t' read -r branch number; do
             TEMP_BRANCH_NAME="main-to-$number-${{ github.event.after }}"
             git checkout -b $TEMP_BRANCH_NAME
@@ -53,23 +54,30 @@ jobs:
             gh pr merge $TARGET_PR --auto --merge
 
             if [[ -n "$TARGET_PR" ]]; then
-              echo "TARGET_PR=$TARGET_PR" >> $GITHUB_ENV
-              echo "RC_PR=$number" >> $GITHUB_ENV
+              if [ -z "$TARGET_PR_LIST" ]; then
+                TARGET_PR_LIST="$pr"
+              else
+                TARGET_PR_LIST="$TARGET_PR_LIST,$pr"
+              fi
 
               # Notify the RC PR about the backmerge attempt
               notify_rc_pr $number $TARGET_PR "🚀 Started" "A backmerge from main has been initiated. This PR will auto-merge if all checks pass."
             fi
           done < <(gh pr list -l "🚀 Release Candidate" --json headRefName,number | jq -r '.[] | "\(.headRefName)\t\(.number)"')
+          echo "TARGET_PR_LIST=$TARGET_PR_LIST" >> $GITHUB_ENV
       - name: approve-pr
         if: env.TARGET_PR != ''
         uses: actions/github-script@v4
         with:
           github-token: ${{ secrets.GH_PAT }}
           script: |
-            const result = await github.pulls.createReview({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: process.env.TARGET_PR,
-              event: "APPROVE"
-            })
-            console.log(result.status)
+            for (const pr of process.env.TARGET_PR_LIST.split(',')) {
+              const result = await github.pulls.createReview({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr,
+                event: "APPROVE"
+              })
+              console.log(result.status)
+            }
+
