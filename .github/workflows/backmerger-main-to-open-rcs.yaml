@@ -66,7 +66,7 @@ jobs:
           done < <(gh pr list -l "🚀 Release Candidate" --json headRefName,number | jq -r '.[] | "\(.headRefName)\t\(.number)"')
           echo "TARGET_PR_LIST=$TARGET_PR_LIST" >> $GITHUB_ENV
       - name: approve-pr
-        if: env.TARGET_PR != ''
+        if: env.TARGET_PR_LIST != ''
         uses: actions/github-script@v4
         with:
           github-token: ${{ secrets.GH_PAT }}
