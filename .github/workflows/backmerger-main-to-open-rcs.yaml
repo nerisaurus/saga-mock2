@@ -25,19 +25,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # Function to clean up stale branches and PRs
-          cleanup_stale() {
-            local branch=$1
-            local temp_branch=$2
-            # Delete the temporary branch if it exists
-            git push origin --delete $temp_branch 2>/dev/null || true
-            # Find and close any existing backmerge PRs for this RC
-            gh pr list --base $branch --label "🔧 Automated Backmerge" --state open --json number | jq -r '.[].number' | while read pr_number; do
-              if [ "$pr_number" != "$TARGET_PR" ]; then
-                gh pr close $pr_number --delete-branch
-              fi
-            done
-          }
 
           # Function to notify RC PR about backmerge status
           notify_rc_pr() {
@@ -45,23 +32,20 @@ jobs:
             local backmerge_pr=$2
             local status=$3
             local message=$4
-            gh pr comment $rc_pr --body "🔧 **Backmerge Status Update**: $status\n$message\n\nBackmerge PR: #$backmerge_pr"
+            echo -e "🔧 **Backmerge Status Update**: $status\n$message\n\nBackmerge PR: #$backmerge_pr" | gh pr comment $rc_pr --body-file -
           }
 
           while IFS=$'\t' read -r branch number; do
-            # Clean up any existing backmerge PRs for this RC
-            cleanup_stale $branch "main-to-$number-*"
-
-            TEMP_BRANCH_NAME="main-to-$number-${{ github.event.push.after }}"
+            TEMP_BRANCH_NAME="main-to-$number-${{ github.event.after }}"
             git checkout -b $TEMP_BRANCH_NAME
             git push origin $TEMP_BRANCH_NAME
 
             # Create the backmerge PR
-            gh pr create --title "[Automated] Backmerge main into ${branch} (for PR #${number})" \
-              --body "Automated Backmerge PR. This should be enabled to auto-merge if all checks pass - if it seems to be lingering, check if manual resolution is needed.\n\nThis PR will be automatically approved and merged if all checks pass. If it fails to merge, please check for:\n- Merge conflicts\n- Failing tests\n- Other issues\n\nRC PR: #$number" \
+            echo -e ""Automated Backmerge PR. This should be enabled to auto-merge if all checks pass - if it seems to be lingering, check if manual resolution is needed.\n\nThis PR will be automatically approved and merged if all checks pass. If it fails to merge, please check for:\n- Merge conflicts\n- Failing tests\n- Other issues\n\nRC PR: #$number" | gh pr create --title "[Automated] Backmerge main into ${branch} (for PR #${number})" \
               --label "🔧 Automated Backmerge" \
               --head "$TEMP_BRANCH_NAME" \
-              --base "$branch"
+              --base "$branch" \
+              --body-file - \
 
             # Get the backmerge PR number
             TARGET_PR=$(gh pr list --head $TEMP_BRANCH_NAME --state open --json number -q '.[0].number')
