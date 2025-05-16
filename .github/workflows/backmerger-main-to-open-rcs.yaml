@@ -51,25 +51,27 @@ jobs:
             # Get the backmerge PR number
             TARGET_PR=$(gh pr list --head $TEMP_BRANCH_NAME --state open --json number -q '.[0].number')
 
-            gh pr merge $TARGET_PR --auto --merge
-
             if [[ -n "$TARGET_PR" ]]; then
               if [ -z "$TARGET_PR_LIST" ]; then
                 TARGET_PR_LIST="$TARGET_PR"
-                echo "putting $TARGET_PR in TARGET_PR_LIST"
               else
                 TARGET_PR_LIST="$TARGET_PR_LIST,$TARGET_PR"
               fi
 
               # Notify the RC PR about the backmerge attempt
-              notify_rc_pr $number $TARGET_PR "🚀 Started" "A backmerge from main has been initiated. This PR will auto-merge if all checks pass."
+              notify_rc_pr $number $TARGET_PR "🚀 Started" "A backmerge from main has been initiated. The backmerge PR will auto-merge if all checks pass - if it does not, you may need to investigate it for a conflict or other failure."
             fi
-          done < <(gh pr list -l "🚀 Release Candidate" --json headRefName,number | jq -r '.[] | "\(.headRefName)\t\(.number)"')
+          done < <(gh pr list -l "🚀 Release Candidate" --draft=false --json headRefName,number | jq -r '.[] | "\(.headRefName)\t\(.number)"')
           echo "TARGET_PR_LIST=$TARGET_PR_LIST" >> $GITHUB_ENV
-      - name: debug
+      - name: enable-auto-merges
+        if: env.TARGET_PR_LIST != ''
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
         run: |
-          echo "TARGET_PR_LIST=$TARGET_PR_LIST"
-      - name: approve-pr
+          for TARGET_PR in $(echo $TARGET_PR_LIST | tr ',' ' '); do
+            gh pr merge $TARGET_PR --auto --merge
+          done
+      - name: approve-prs
         if: env.TARGET_PR_LIST != ''
         uses: actions/github-script@v4
         with:
@@ -84,4 +86,3 @@ jobs:
               })
               console.log(result.status)
             }
-
