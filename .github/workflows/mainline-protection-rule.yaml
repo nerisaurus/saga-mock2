@@ -25,17 +25,17 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Release Path
-        if: ${{ env.BRANCH_IS_RELEASE == true }}
+        if: ${{ env.BRANCH_IS_RELEASE == 'true' }}
         run: |
           echo "Release branch is always allowed to merge to main"
           exit 0
       - name: (for bypasses) Checkout Branch
-        if: ${{ env.BRANCH_IS_RELEASE != true }}
+        if: ${{ env.BRANCH_IS_RELEASE != 'true' }}
         uses: actions/checkout@v4
         with:
           sparse-checkout: .
       - name: Bypassing Release
-        if: ${{ env.BRANCH_IS_RELEASE != true }}
+        if: ${{ env.BRANCH_IS_RELEASE != 'true' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
