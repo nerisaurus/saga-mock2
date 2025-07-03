@@ -1,0 +1,88 @@
+name: Merge Main into Open RCs
+
+on:
+  push:
+    branches:
+      - 'main'
+
+permissions:
+  pull-requests: write
+  issues: write
+  contents: write
+
+jobs:
+  main:
+    concurrency:
+      group: "main to rcs ${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}"
+      cancel-in-progress: true
+    name: Create PRs from Main to open and non-draft RCs, set to auto-merge if it's viable
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+      - name: pull-request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+
+          # Function to notify RC PR about backmerge status
+          notify_rc_pr() {
+            local rc_pr=$1
+            local backmerge_pr=$2
+            local status=$3
+            local message=$4
+            gh pr comment $rc_pr --body-file - <<< "🔧 **Backmerge Status (PR #$backmerge_pr)**: $status | $message"
+          }
+
+          TARGET_PR_LIST=""
+          while IFS=$'\t' read -r branch number; do
+            TEMP_BRANCH_NAME="main-to-$number-${{ github.event.after }}"
+            git checkout -b $TEMP_BRANCH_NAME
+            git push origin $TEMP_BRANCH_NAME
+
+            # Create the backmerge PR
+            gh pr create --title "[Automated] Backmerge main into ${branch} (for PR #${number})" \
+              --label "🔧 Automated Backmerge" \
+              --head "$TEMP_BRANCH_NAME" \
+              --base "$branch" \
+              --body-file - <<< "Automated Backmerge PR. This should be enabled to auto-merge if all checks pass - if it seems to be lingering, check if manual resolution is needed.  This PR will be automatically approved and merged if all checks pass. If it fails to merge, please check for merge conflicts and failing tests below.  RC PR: #$number"
+
+            # Get the backmerge PR number
+            TARGET_PR=$(gh pr list --head $TEMP_BRANCH_NAME --state open --json number -q '.[0].number')
+
+            if [[ -n "$TARGET_PR" ]]; then
+              if [ -z "$TARGET_PR_LIST" ]; then
+                TARGET_PR_LIST="$TARGET_PR"
+              else
+                TARGET_PR_LIST="$TARGET_PR_LIST,$TARGET_PR"
+              fi
+
+              # Notify the RC PR about the backmerge attempt
+              notify_rc_pr $number $TARGET_PR "🚀 Started" "A backmerge from main has been initiated. The backmerge PR will auto-merge if all checks pass - if it does not, you may need to investigate it for a conflict or other failure."
+            fi
+          done < <(gh pr list -l "🚀 Release Candidate" --draft=false --json headRefName,number | jq -r '.[] | "\(.headRefName)\t\(.number)"')
+          echo "TARGET_PR_LIST=$TARGET_PR_LIST" >> $GITHUB_ENV
+      - name: enable-auto-merges
+        if: env.TARGET_PR_LIST != ''
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          for TARGET_PR in $(echo $TARGET_PR_LIST | tr ',' ' '); do
+            gh pr merge $TARGET_PR --auto --merge
+          done
+      - name: approve-prs
+        if: env.TARGET_PR_LIST != ''
+        uses: actions/github-script@v4
+        with:
+          github-token: ${{ secrets.GH_PAT }}
+          script: |
+            for (const pr of process.env.TARGET_PR_LIST.split(',')) {
+              const result = await github.pulls.createReview({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr,
+                event: "APPROVE"
+              })
+              console.log(result.status)
+            }

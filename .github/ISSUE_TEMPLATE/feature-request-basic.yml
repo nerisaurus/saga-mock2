@@ -1,0 +1,30 @@
+name: Feature Request
+description: A template for requesting new features, user stories, etc.
+projects: ["hipponot/Saga Engineering"]
+type: 'Feature'
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please fill out all the info you know in full.
+  - type: textarea
+    id: user-story
+    attributes:
+      label: '🤹 User Story'
+      description: As [who?] I want to [be able to do what/have what happen when?]...
+    validations:
+      required: false
+  - type: textarea
+    id: issue-details
+    attributes:
+      label: '🔭 Additional Info'
+      description: Comps, design documents, etc.
+    validations:
+      required: false
+  - type: textarea
+    id: issue-technical
+    attributes:
+      label: '🦾 Technical Jargon'
+      description: For engineers, general technical nuance/complexities that may be relevant.
+    validations:
+      required: false
