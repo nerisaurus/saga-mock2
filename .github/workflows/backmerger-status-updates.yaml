@@ -1,0 +1,85 @@
+name: Backmerge Status Updates
+
+on:
+  pull_request:
+    types: [opened, synchronize, closed]
+  check_suite:
+    types: [completed]
+  check_run:
+    types: [completed]
+
+permissions:
+  pull-requests: write
+  issues: write
+
+jobs:
+  status-update:
+    if: |
+      (github.event_name == "pull_request" && contains(github.event.pull_request.*.labels.*.name, '🔧 Automated Backmerge')) ||
+      (github.event_name == "check_suite" && contains(github.event.check_suite.pull_requests.*.labels.*.name, '🔧 Automated Backmerge')) ||
+      (github.event_name == "check_run" && contains(github.event.check_suite.pull_requests.*.labels.*.name, '🔧 Automated Backmerge'))
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get PR Info
+        id: pr_info
+        uses: actions/github-script@v4
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const pr = context.payload.pull_request || context.payload.check_suite?.pull_requests?.[0] || context.payload.check_run?.pull_requests?.[0];
+            if (!pr) return {};
+            
+            // Extract RC PR number from the PR body
+            const rcPrMatch = pr.body.match(/RC PR: #(\d+)/);
+            const rcPrNumber = rcPrMatch ? rcPrMatch[1] : null;
+            
+            return {
+              pr_number: pr.number,
+              rc_pr_number: rcPrNumber,
+              state: pr.state,
+              merged: pr.merged,
+              mergeable: pr.mergeable,
+              mergeable_state: pr.mergeable_state
+            };
+      
+      - name: Update Status
+        if: steps.pr_info.outputs.rc_pr_number != ''
+        uses: actions/github-script@v4
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const prInfo = JSON.parse('${{ steps.pr_info.outputs }}');
+            const { pr_number, rc_pr_number, state, merged, mergeable, mergeable_state } = prInfo;
+
+            let status = '';
+            let message = '';
+
+            if (merged) {
+              status = '✅ Completed';
+              message = 'The backmerge has been successfully completed.';
+            } else if (state === 'closed') {
+              status = '❌ Closed';
+              message = 'The backmerge PR was closed without merging.';
+            } else if (mergeable_state === 'dirty') {
+              status = '👁️ Blocked';
+              message = 'The backmerge has merge conflicts that need to be resolved.';
+            } else if (mergeable_state === 'blocked') {
+              status = '👁️ Blocked';
+              message = 'The backmerge is blocked by failing checks.';
+            } else if (mergeable_state === 'behind') {
+              status = 'Pending';
+              message = 'The backmerge is pending - the target branch has new changes.';
+            } else {
+              status = 'In Progress';
+              message = 'The backmerge is in progress, waiting for checks to complete.';
+            }
+
+            let body = `🔧 **Backmerge Status (PR #${pr_number})**: ${status} | ${message}`;
+
+            // Add a comment to the RC PR
+            await github.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: rc_pr_number,
+              body: body,
+            });

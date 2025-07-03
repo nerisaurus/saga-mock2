@@ -1,7 +1,10 @@
 name: Confirm Safe to Mainline
 
 on:
-  pull_request:
+  push: # for automations getting release --> main
+    branches:
+      - "release"
+  pull_request: # for PRs directly to main
     branches:
       - "main"
     types:
@@ -12,16 +15,34 @@ on:
       - unlabeled
       - synchronize
 
+env:
+  BRANCH_IS_RELEASE: ${{ github.event_name == 'push' && github.event.ref == 'refs/heads/release' ||
+    github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'release' }}
+
 jobs:
   Audit-Pull-Request-Mainline:
     runs-on: ubuntu-latest
-    concurrency:
-      group: "mainline protection rule ${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}"
-      cancel-in-progress: true
     timeout-minutes: 5
     steps:
-      - name: Branch Check
-        if: ${{ !(github.event.pull_request.head.ref == 'release' || contains(github.event.pull_request.labels.*.name, 'Can Bypass QA ⚡'))  }}
+      - name: Release Path
+        if: ${{ env.BRANCH_IS_RELEASE == 'true' }}
         run: |
-          echo "Requires the label 'Can Bypass QA ⚡' or to be on the 'release' branch"
-          exit 1
+          echo "Release branch is always allowed to merge to main"
+          exit 0
+      - name: (for bypasses) Checkout Branch
+        if: ${{ env.BRANCH_IS_RELEASE != 'true' }}
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: .
+      - name: Bypassing Release
+        if: ${{ env.BRANCH_IS_RELEASE != 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER=${{ github.event.pull_request.number }}
+          BYPASS_LABEL=$(gh pr view $PR_NUMBER --json labels -q '.labels[].name' | grep '^Can Bypass QA ⚡$' || echo '')
+          if [[ -z "$BYPASS_LABEL" ]]; then
+            echo "Requires the label 'Can Bypass QA ⚡' to merge directly to main."
+            exit 1
+          fi
+          exit 0
