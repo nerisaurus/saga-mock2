@@ -1,0 +1,75 @@
+name: Bucket (Epic)
+description: High-level bucket issue for grouping related features and work
+projects: ["hipponot/Saga Engineering"]
+type: 'Bucket'
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This is a high-level bucket (epic) to capture a problem area and outcomes.
+        Keep it concise; link out to supporting docs and child issues.
+        Focus on Problem, Outcomes, and Product Requirements. Other fields may or may not apply.
+  - type: textarea
+    id: problem-statement
+    attributes:
+      label: '🎯 Problem Statement'
+      description: "Format: As a (user) I want (objective) so that (goal). Who are we solving for and why does this matter?"
+    validations:
+      required: true
+  - type: textarea
+    id: background
+    attributes:
+      label: '🧩 Background'
+      description: "Optional. Context, research notes, links, and prior related work."
+    validations:
+      required: false
+  - type: textarea
+    id: outcomes
+    attributes:
+      label: '📈 Outcomes'
+      description: "Measurable benefits we expect. How will we know we’re successful?"
+      placeholder: |
+        - Increase X by Y%
+        - Reduce time-to-Z by N minutes
+    validations:
+      required: false
+  - type: textarea
+    id: leading-indicators
+    attributes:
+      label: '🔎 Leading Indicators'
+      description: "Optional. Early measurements that suggest we’re on the right track."
+    validations:
+      required: false
+  - type: textarea
+    id: product-requirements
+    attributes:
+      label: '📝 Product Requirements'
+      description: "Bullet points for what’s in scope and definition of done at the epic level. Start high-level and refine over time."
+      placeholder: |
+        - Users can...
+        - System must...
+    validations:
+      required: false
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: '🚫 Out of Scope'
+      description: "What are we not doing? (other buckets, sequenced work, ideas descoped or split into future buckets)"
+    validations:
+      required: false
+  - type: textarea
+    id: design
+    attributes:
+      label: '🎨 Design'
+      description: "Links or attachments for UI/UX mockups and comps."
+    validations:
+      required: false
+  - type: textarea
+    id: references
+    attributes:
+      label: '🔗 References & Links'
+      description: "Docs, dashboards, PRDs, related issues."
+    validations:
+      required: false
+
+
