@@ -1,0 +1,75 @@
+name: Saga API Checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+jobs:
+  build:
+    name: Saga API (build)
+    runs-on: ubuntu-latest
+    if: ${{ github.event.pull_request.draft == false }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Read toggle and decide
+        id: decide
+        run: |
+          status=$(awk -F': *' '/^Saga API \(build\):/{print $2}' check_failures.yml | tr -d '[:space:]')
+          if [ -z "$status" ]; then status=pass; fi
+          echo "status=$status" >> $GITHUB_OUTPUT
+      - name: Print result
+        run: |
+          echo "Demo check: reading check_failures.yml -> Saga API (build): ${{ steps.decide.outputs.status }}"
+      - name: Fail if configured
+        if: ${{ steps.decide.outputs.status == 'fail' }}
+        run: |
+          echo "This is a simulated failure for demonstration purposes." >&2
+          exit 1
+
+  smoke:
+    name: Saga API (smoke tests)
+    runs-on: ubuntu-latest
+    needs: build
+    if: ${{ needs.build.result == 'success' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Read toggle and decide
+        id: decide
+        run: |
+          status=$(awk -F': *' '/^Saga API \(smoke tests\):/{print $2}' check_failures.yml | tr -d '[:space:]')
+          if [ -z "$status" ]; then status=pass; fi
+          echo "status=$status" >> $GITHUB_OUTPUT
+      - name: Print result
+        run: |
+          echo "Demo check: reading check_failures.yml -> Saga API (smoke tests): ${{ steps.decide.outputs.status }}"
+      - name: Fail if configured
+        if: ${{ steps.decide.outputs.status == 'fail' }}
+        run: |
+          echo "This is a simulated failure for demonstration purposes." >&2
+          exit 1
+
+  acceptance:
+    name: Saga API (acceptance tests)
+    runs-on: ubuntu-latest
+    needs: smoke
+    if: ${{ needs.smoke.result == 'success' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Read toggle and decide
+        id: decide
+        run: |
+          status=$(awk -F': *' '/^Saga API \(acceptance tests\):/{print $2}' check_failures.yml | tr -d '[:space:]')
+          if [ -z "$status" ]; then status=pass; fi
+          echo "status=$status" >> $GITHUB_OUTPUT
+      - name: Print result
+        run: |
+          echo "Demo check: reading check_failures.yml -> Saga API (acceptance tests): ${{ steps.decide.outputs.status }}"
+      - name: Fail if configured
+        if: ${{ steps.decide.outputs.status == 'fail' }}
+        run: |
+          echo "This is a simulated failure for demonstration purposes." >&2
+          exit 1
+
