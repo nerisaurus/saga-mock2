@@ -1,30 +1,49 @@
 name: Feature Request
-description: A template for requesting new features, user stories, etc.
-projects: ["hipponot/Saga Engineering"]
+description: A template for requesting new features, user stories, etc. - as sub-issues of a Bucket
+projects: ["nerisaurus/projects/2"]
 type: 'Feature'
 body:
   - type: markdown
     attributes:
       value: |
-        Please fill out all the info you know in full.
+        Please provide enough context for PMs and engineers to understand the request.
+        Focus on the Problem Statement and Acceptance Criteria; other sections are optional.
+        Tip: Keep Acceptance Criteria as short bullet points.
   - type: textarea
-    id: user-story
+    id: problem-statement
     attributes:
-      label: '🤹 User Story'
-      description: As [who?] I want to [be able to do what/have what happen when?]...
+      label: '🎯 Problem Statement'
+      description: "Format: As a (user) I want (objective) so that (goal). What problem are we solving, for whom, and why does it matter?"
     validations:
       required: false
   - type: textarea
-    id: issue-details
+    id: acceptance-criteria
     attributes:
-      label: '🔭 Additional Info'
-      description: Comps, design documents, etc.
+      label: '✅ Acceptance Criteria'
+      description: "Bullet points listing what is in scope for this story and how we know it’s complete. Prefer concise bullets; Given/When/Then is welcome."
+      placeholder: |
+        - When X, Y should happen
+        - Given A, B ... then C, given D then E...
     validations:
       required: false
   - type: textarea
-    id: issue-technical
+    id: test-plan
     attributes:
-      label: '🦾 Technical Jargon'
-      description: For engineers, general technical nuance/complexities that may be relevant.
+      label: '🧪 Test Plan'
+      description: "Optional. Add Given/When/Then scenarios, manual steps, or links to test cases."
+    validations:
+      required: false
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: '🚫 Out of Scope'
+      description: "Optional. What are we explicitly not doing?"
+    validations:
+      required: false
+  - type: textarea
+    id: technical-requirements
+    attributes:
+      label: '🛠️ Technical Requirements'
+      description: "Added by engineering: approach notes, dependencies, risks, and constraints."
     validations:
       required: false
