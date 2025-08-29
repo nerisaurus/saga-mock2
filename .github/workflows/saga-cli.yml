@@ -1,0 +1,29 @@
+name: Saga CLI (build)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+jobs:
+  build:
+    name: Saga CLI (build)
+    runs-on: ubuntu-latest
+    if: ${{ github.event.pull_request.draft == false }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Read toggle and decide
+        id: decide
+        run: |
+          status=$(awk -F': *' '/^Saga CLI \(build\):/{print $2}' check_failures.yml | tr -d '[:space:]')
+          if [ -z "$status" ]; then status=pass; fi
+          echo "status=$status" >> $GITHUB_OUTPUT
+      - name: Print result
+        run: |
+          echo "Demo check: reading check_failures.yml -> Saga CLI (build): ${{ steps.decide.outputs.status }}"
+      - name: Fail if configured
+        if: ${{ steps.decide.outputs.status == 'fail' }}
+        run: |
+          echo "This is a simulated failure for demonstration purposes." >&2
+          exit 1
+

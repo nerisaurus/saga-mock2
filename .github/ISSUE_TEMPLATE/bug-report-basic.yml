@@ -1,6 +1,6 @@
 name: Bug Report
 description: A template for reporting bugs.
-projects: ["hipponot/Saga Engineering"]
+projects: ["nerisaurus/projects/2"]
 type: 'Bug'
 body:
   - type: markdown

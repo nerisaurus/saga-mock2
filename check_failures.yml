@@ -1,0 +1,6 @@
+Saga API (build): pass
+Saga API (smoke tests): fail
+Saga API (acceptance tests): pass
+Saga CLI (build): pass
+Travis CI: fail
+
