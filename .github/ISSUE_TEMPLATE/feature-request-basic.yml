@@ -1,7 +1,5 @@
 name: Feature Request
 description: A template for requesting new features, user stories, etc. - as sub-issues of a Bucket
-projects: ["nerisaurus/projects/2"]
-type: 'Feature'
 body:
   - type: markdown
     attributes:

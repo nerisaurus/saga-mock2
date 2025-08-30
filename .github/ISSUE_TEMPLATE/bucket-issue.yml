@@ -1,7 +1,5 @@
 name: Bucket (Epic)
 description: High-level bucket issue for grouping related features and work
-projects: ["hipponot/Saga Engineering"]
-type: 'Bucket'
 body:
   - type: markdown
     attributes:

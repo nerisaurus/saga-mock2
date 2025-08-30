@@ -1,7 +1,5 @@
 name: Bug Report
 description: A template for reporting bugs.
-projects: ["nerisaurus/projects/2"]
-type: 'Bug'
 body:
   - type: markdown
     attributes:
@@ -25,7 +23,7 @@ body:
     validations:
       required: true
   - type: textarea
-    id: issue-description
+    id: reproduction-steps
     attributes:
       label: '🧪 Reproduction Steps'
       description: What steps (add as much detail as needed) can reproduce the issue?  If known does it happen for only a particular user/org/role/browser?
