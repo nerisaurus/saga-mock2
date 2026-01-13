@@ -1,0 +1,198 @@
+name: Propagate Resolved Issues from Merged PRs
+
+on:
+  pull_request:
+    types:
+      - closed
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  propagate_issues:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    concurrency:
+      group: "issue-propagation-${{ github.event.pull_request.base.ref }}"
+      cancel-in-progress: true
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+
+      - name: Get issue references from merged PR
+        id: get_source_issues
+        run: |
+          SOURCE_PR=${{ github.event.pull_request.number }}
+          
+          # Get the PR body
+          PR_BODY=$(gh pr view "$SOURCE_PR" --json body -q '.body')
+          
+          # Run the parsing script
+          ISSUES=$(.github/scripts/propagate-issues/parse-issues.sh "$PR_BODY")
+          
+          # Export for next steps
+          echo "SOURCE_ISSUES<<EOF" >> $GITHUB_OUTPUT
+          echo "$ISSUES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          
+          if [[ -n "$ISSUES" ]]; then
+            echo "HAS_ISSUES=true" >> $GITHUB_OUTPUT
+            echo "Found issues in PR #$SOURCE_PR:"
+            echo "$ISSUES"
+          else
+            echo "HAS_ISSUES=false" >> $GITHUB_OUTPUT
+            echo "No 'Resolves' references found in PR #$SOURCE_PR"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Find target PR
+        id: find_target_pr
+        if: steps.get_source_issues.outputs.HAS_ISSUES == 'true'
+        run: |
+          BASE_BRANCH=${{ github.event.pull_request.base.ref }}
+          
+          # Find an open PR whose head branch is the base branch of the merged PR
+          TARGET_PR=$(gh pr list --head "$BASE_BRANCH" --state open --json number -q '.[0].number')
+
+          if [[ -n "$TARGET_PR" ]]; then
+            echo "TARGET_PR=$TARGET_PR" >> $GITHUB_OUTPUT
+            echo "Found target PR #$TARGET_PR with head branch '$BASE_BRANCH'"
+          else
+            echo "No open PR found with head branch '$BASE_BRANCH'"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get target PR body
+        id: get_target_body
+        if: steps.find_target_pr.outputs.TARGET_PR != ''
+        run: |
+          TARGET_PR=${{ steps.find_target_pr.outputs.TARGET_PR }}
+          
+          # Get the target PR body
+          TARGET_BODY=$(gh pr view "$TARGET_PR" --json body -q '.body')
+          
+          # Export for next steps (use base64 to handle special characters)
+          echo "TARGET_BODY_B64=$(echo "$TARGET_BODY" | base64 -w 0)" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Insert issues into target PR
+        id: insert_issues
+        if: steps.find_target_pr.outputs.TARGET_PR != ''
+        run: |
+          TARGET_PR=${{ steps.find_target_pr.outputs.TARGET_PR }}
+          SOURCE_PR=${{ github.event.pull_request.number }}
+          SOURCE_ISSUES="${{ steps.get_source_issues.outputs.SOURCE_ISSUES }}"
+          TARGET_BODY_B64="${{ steps.get_target_body.outputs.TARGET_BODY_B64 }}"
+          
+          # Decode target body
+          TARGET_BODY=$(echo "$TARGET_BODY_B64" | base64 -d)
+          
+          # Run the insertion script
+          # Returns: JSON with { "success": bool, "body": string, "issues_added": [...], "reason": string }
+          RESULT=$(.github/scripts/propagate-issues/insert-issues.sh \
+            --source-pr "$SOURCE_PR" \
+            --issues "$SOURCE_ISSUES" \
+            --target-body "$TARGET_BODY")
+          
+          SUCCESS=$(echo "$RESULT" | jq -r '.success')
+          REASON=$(echo "$RESULT" | jq -r '.reason // ""')
+          ISSUES_ADDED=$(echo "$RESULT" | jq -r '.issues_added | join("\n")')
+          
+          echo "SUCCESS=$SUCCESS" >> $GITHUB_OUTPUT
+          echo "REASON=$REASON" >> $GITHUB_OUTPUT
+          
+          if [[ "$SUCCESS" == "true" ]]; then
+            NEW_BODY=$(echo "$RESULT" | jq -r '.body')
+            echo "NEW_BODY_B64=$(echo "$NEW_BODY" | base64 -w 0)" >> $GITHUB_OUTPUT
+            
+            echo "ISSUES_ADDED<<EOF" >> $GITHUB_OUTPUT
+            echo "$ISSUES_ADDED" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+            
+            if [[ -n "$ISSUES_ADDED" ]]; then
+              echo "HAS_NEW_ISSUES=true" >> $GITHUB_OUTPUT
+            else
+              echo "HAS_NEW_ISSUES=false" >> $GITHUB_OUTPUT
+              echo "All issues already exist in target PR"
+            fi
+          else
+            echo "HAS_NEW_ISSUES=false" >> $GITHUB_OUTPUT
+            echo "Insertion failed: $REASON"
+          fi
+
+      - name: Update target PR body
+        if: steps.insert_issues.outputs.SUCCESS == 'true' && steps.insert_issues.outputs.HAS_NEW_ISSUES == 'true'
+        run: |
+          TARGET_PR=${{ steps.find_target_pr.outputs.TARGET_PR }}
+          NEW_BODY_B64="${{ steps.insert_issues.outputs.NEW_BODY_B64 }}"
+          
+          # Decode new body
+          NEW_BODY=$(echo "$NEW_BODY_B64" | base64 -d)
+          
+          # Update the PR body
+          gh pr edit "$TARGET_PR" --body "$NEW_BODY"
+          
+          echo "Updated PR #$TARGET_PR body with propagated issues"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Post success comment on target PR
+        if: steps.insert_issues.outputs.SUCCESS == 'true' && steps.insert_issues.outputs.HAS_NEW_ISSUES == 'true'
+        run: |
+          TARGET_PR=${{ steps.find_target_pr.outputs.TARGET_PR }}
+          SOURCE_PR=${{ github.event.pull_request.number }}
+          ISSUES_ADDED="${{ steps.insert_issues.outputs.ISSUES_ADDED }}"
+          
+          # Format issues as markdown list
+          ISSUES_LIST=""
+          while IFS= read -r issue; do
+            if [[ -n "$issue" ]]; then
+              ISSUES_LIST="${ISSUES_LIST}"$'\n'"- \`${issue}\`"
+            fi
+          done <<< "$ISSUES_ADDED"
+          
+          # Build comment body (use printf to handle newlines properly)
+          printf -v COMMENT_BODY '%s\n\n%s\n%s\n\n%s' \
+            "🔗 **Issues propagated from merged PR #${SOURCE_PR}**" \
+            "The following issue references were added to this PR's description:" \
+            "$ISSUES_LIST" \
+            "These issues will be automatically closed when this PR is merged to the default branch."
+
+          gh pr comment "$TARGET_PR" --body "$COMMENT_BODY"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Post fallback comment on target PR
+        if: steps.insert_issues.outputs.SUCCESS == 'false' && steps.find_target_pr.outputs.TARGET_PR != ''
+        run: |
+          TARGET_PR=${{ steps.find_target_pr.outputs.TARGET_PR }}
+          SOURCE_PR=${{ github.event.pull_request.number }}
+          SOURCE_ISSUES="${{ steps.get_source_issues.outputs.SOURCE_ISSUES }}"
+          REASON="${{ steps.insert_issues.outputs.REASON }}"
+          
+          # Format issues as code block content
+          ISSUES_LINES=""
+          while IFS= read -r issue; do
+            if [[ -n "$issue" ]]; then
+              ISSUES_LINES="${ISSUES_LINES}- Resolves ${issue}"$'\n'
+            fi
+          done <<< "$SOURCE_ISSUES"
+          
+          # Build comment body using printf
+          printf -v COMMENT_BODY '%s\n\n%s\n\n%s\n\n```\n%s```\n\n%s' \
+            "⚠️ **Issues from merged PR #${SOURCE_PR} may need propagation**" \
+            "The following issues were linked in the merged PR but could not be automatically added to this PR's description." \
+            "To enable auto-closing when this PR merges, copy the lines below to this PR's \"Issues Resolved\" section:" \
+            "$ISSUES_LINES" \
+            "_Reason: ${REASON}_"
+
+          gh pr comment "$TARGET_PR" --body "$COMMENT_BODY"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

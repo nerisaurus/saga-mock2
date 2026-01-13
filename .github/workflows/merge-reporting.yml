@@ -1,0 +1,185 @@
+name: Merge Reporting
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write  # For creating tags
+  pull-requests: read  # For reading PR info
+  checks: read  # For reading check status
+
+jobs:
+  report-merge:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for commit count and tag creation
+      
+      - name: Load configuration
+        id: config
+        run: |
+          CONFIG_FILE=".github/merge-reporting.config.json"
+          
+          if [[ -f "$CONFIG_FILE" ]]; then
+            echo "config_file=$CONFIG_FILE" >> $GITHUB_OUTPUT
+            
+            # Check if enabled
+            ENABLED=$(jq -r '.enabled // true' "$CONFIG_FILE")
+            echo "enabled=$ENABLED" >> $GITHUB_OUTPUT
+            
+            # Check if tagging is enabled
+            TAGGING_ENABLED=$(jq -r '.tagging.enabled // true' "$CONFIG_FILE")
+            echo "tagging_enabled=$TAGGING_ENABLED" >> $GITHUB_OUTPUT
+            
+            # Get major version if configured
+            MAJOR_VERSION=$(jq -r '.tagging.majorVersion // ""' "$CONFIG_FILE")
+            echo "major_version=$MAJOR_VERSION" >> $GITHUB_OUTPUT
+          else
+            echo "config_file=" >> $GITHUB_OUTPUT
+            echo "enabled=true" >> $GITHUB_OUTPUT
+            echo "tagging_enabled=true" >> $GITHUB_OUTPUT
+            echo "major_version=" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Check if enabled
+        if: steps.config.outputs.enabled != 'true'
+        run: |
+          echo "Merge reporting is disabled in configuration"
+          exit 0
+      
+      - name: Make scripts executable
+        run: |
+          chmod +x .github/scripts/merge-reporting/*.sh
+          chmod +x .github/scripts/merge-reporting/lib/*.sh
+      
+      - name: Create version tag
+        id: tag
+        if: steps.config.outputs.tagging_enabled == 'true'
+        run: |
+          TAG_ARGS="--commit ${{ github.sha }} --push"
+          
+          if [[ -n "${{ steps.config.outputs.major_version }}" ]]; then
+            TAG_ARGS="$TAG_ARGS --major ${{ steps.config.outputs.major_version }}"
+          fi
+          
+          .github/scripts/merge-reporting/create-tag.sh $TAG_ARGS
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Gather merge information
+        id: gather
+        run: |
+          TAG_NAME="${{ steps.tag.outputs.tag_name }}"
+          
+          GATHER_ARGS="--commit ${{ github.sha }} --repo ${{ github.repository }}"
+          
+          if [[ -n "$TAG_NAME" ]]; then
+            GATHER_ARGS="$GATHER_ARGS --tag $TAG_NAME"
+          fi
+          
+          if [[ -n "${{ steps.config.outputs.config_file }}" ]]; then
+            GATHER_ARGS="$GATHER_ARGS --config ${{ steps.config.outputs.config_file }}"
+          fi
+          
+          # Run gather script and save output
+          .github/scripts/merge-reporting/gather-merge-info.sh $GATHER_ARGS > /tmp/merge-info.json
+          
+          # Also output for debugging
+          echo "=== Gathered Merge Info ==="
+          cat /tmp/merge-info.json | jq .
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Build Slack message
+        id: message
+        run: |
+          BUILD_ARGS="--input /tmp/merge-info.json"
+          
+          if [[ -n "${{ steps.config.outputs.config_file }}" ]]; then
+            BUILD_ARGS="$BUILD_ARGS --config ${{ steps.config.outputs.config_file }}"
+          fi
+          
+          .github/scripts/merge-reporting/build-slack-message.sh $BUILD_ARGS > /tmp/slack-message.json
+          
+          # Output for debugging
+          echo "=== Slack Message ==="
+          cat /tmp/slack-message.json | jq .
+      
+      - name: Send to Slack (PLACEHOLDER MODE)
+        # PLACEHOLDER MODE: Shows the message without actually sending
+        # To enable real Slack, set SLACK_WEBHOOK_URL secret in repo settings
+        run: |
+          echo "========================================="
+          echo "=== SLACK MESSAGE THAT WOULD BE SENT ==="
+          echo "========================================="
+          cat /tmp/slack-message.json | jq .
+          echo "========================================="
+          echo ""
+          if [[ -n "$SLACK_WEBHOOK_URL" ]]; then
+            echo "Sending to Slack..."
+            .github/scripts/merge-reporting/send-slack-message.sh \
+              --file /tmp/slack-message.json
+          else
+            echo "SLACK_WEBHOOK_URL not set - running in placeholder mode"
+            echo "Set the secret to enable real Slack notifications"
+          fi
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      
+      - name: Summary
+        run: |
+          TAG_NAME="${{ steps.tag.outputs.tag_name }}"
+          
+          echo "## Merge Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [[ -n "$TAG_NAME" ]]; then
+            echo "**Tag:** \`$TAG_NAME\`" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Add concerns if any
+          CONCERNS=$(cat /tmp/merge-info.json | jq -r '.concerns[] | "- ⚠️ \(.message)"')
+          if [[ -n "$CONCERNS" ]]; then
+            echo "### Concerns" >> $GITHUB_STEP_SUMMARY
+            echo "$CONCERNS" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Add linked issues
+          ISSUES=$(cat /tmp/merge-info.json | jq -r '.linked_issues[] | "- #\(.number) \(.title)"')
+          if [[ -n "$ISSUES" ]]; then
+            echo "### Linked Issues" >> $GITHUB_STEP_SUMMARY
+            echo "$ISSUES" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Add Slack message preview
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Slack Message Preview" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`json" >> $GITHUB_STEP_SUMMARY
+          cat /tmp/slack-message.json | jq . >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
