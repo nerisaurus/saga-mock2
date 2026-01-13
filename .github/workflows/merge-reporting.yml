@@ -57,6 +57,11 @@ jobs:
           chmod +x .github/scripts/merge-reporting/*.sh
           chmod +x .github/scripts/merge-reporting/lib/*.sh
       
+      - name: Configure git identity
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+      
       - name: Create version tag
         id: tag
         if: steps.config.outputs.tagging_enabled == 'true'
