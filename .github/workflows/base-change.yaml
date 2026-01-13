@@ -1,0 +1,34 @@
+name: Base Branch Change Handler
+
+on:
+  pull_request:
+    types: [edited]
+
+permissions:
+  contents: write # needed to push the empty commit
+
+jobs:
+  handle-base-change:
+    name: Handle Base Branch Change
+    # Only run if base branch actually changed, and not a draft
+    if: |
+      github.event.changes.base.ref.from != null && 
+      !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 1
+
+      - name: Push empty commit to trigger rebuild
+        run: |
+          OLD_BASE="${{ github.event.changes.base.ref.from }}"
+          NEW_BASE="${{ github.event.pull_request.base.ref }}"
+          
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git commit --allow-empty -m "ci: rebuild for base branch change ($OLD_BASE → $NEW_BASE)"
+          git push

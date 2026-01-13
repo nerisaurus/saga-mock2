@@ -1,0 +1,34 @@
+{
+  "enabled": true,
+  "slack": {
+    "webhookSecretName": "SLACK_WEBHOOK_URL",
+    "mentionOnConcerns": false
+  },
+  "tagging": {
+    "enabled": true,
+    "majorVersion": null
+  },
+  "labels": {
+    "highlight": [
+      "Hotfix",
+      "hotfix",
+      "Breaking Change",
+      "breaking-change",
+      "Security",
+      "security"
+    ]
+  },
+  "userMapping": {
+  },
+  "lockStatus": {
+    "enabled": false
+  },
+  "buildStatus": {
+    "enabled": false,
+    "projectNumber": null,
+    "fields": {
+      "buildStatus": "Build Status",
+      "environment": "Environment"
+    }
+  }
+}
